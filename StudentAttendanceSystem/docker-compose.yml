@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # ── Python Face Recognition Microservice ──
+  face-api:
+    build:
+      context: ./server/python
+      dockerfile: Dockerfile
+    container_name: sas-face-api
+    restart: unless-stopped
+    ports:
+      - "${FACE_API_PORT:-5001}:5001"
+    environment:
+      - PORT=5001
+      - DATABASE_URL=${DATABASE_URL}
+      - HF_TOKEN=${HF_TOKEN:-}
+    networks:
+      - sas-network
+
+  # ── Node.js / Express Gateway API ──
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: sas-backend
+    restart: unless-stopped
+    ports:
+      - "${SERVER_PORT:-5000}:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET:-sas_production_jwt_secret_key_change_me}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      - FACE_API_URL=http://face-api:5001/api
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173,http://localhost:80,http://localhost:3000}
+    volumes:
+      - sas-uploads:/app/uploads
+    depends_on:
+      - face-api
+    networks:
+      - sas-network
+
+  # ── React 18 + Vite Frontend Client ──
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:5000/api}
+    container_name: sas-frontend
+    restart: unless-stopped
+    ports:
+      - "${CLIENT_PORT:-80}:80"
+    depends_on:
+      - backend
+    networks:
+      - sas-network
+
+networks:
+  sas-network:
+    driver: bridge
+
+volumes:
+  sas-uploads:
+    driver: local

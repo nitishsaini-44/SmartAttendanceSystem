@@ -1,0 +1,61 @@
+# ── Node.js ───────────────────────────────────────────────────────────────────
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Environment Variables ─────────────────────────────────────────────────────
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+!.env.docker.example
+
+# ── Build Artifacts ───────────────────────────────────────────────────────────
+dist/
+build/
+**/dist/
+**/build/
+
+# ── Uploads ───────────────────────────────────────────────────────────────────
+uploads/
+**/uploads/
+server/uploads/
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+eggs/
+.eggs/
+
+# Python virtual environments
+venv/
+.venv/
+env/
+ENV/
+**/.venv/
+
+# InsightFace model weights
+.insightface/
+**/.insightface/
+
+# ── Logs & OS ─────────────────────────────────────────────────────────────────
+logs/
+*.log
+*.log.*
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/

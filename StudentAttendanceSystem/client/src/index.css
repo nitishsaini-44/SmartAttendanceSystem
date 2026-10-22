@@ -1,0 +1,172 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Body */
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: #0a0a0a;
+  min-height: 100vh;
+  color: #f4f4f5;
+  overflow-x: hidden;
+}
+
+/* Prevent any child from causing horizontal scroll */
+#root {
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #18181b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
+
+/* Button styles */
+
+.btn-primary {
+  @apply bg-white text-black font-medium py-2.5 px-4 
+         rounded-2xl transition-all duration-200 
+         hover:scale-[1.01] active:scale-100;
+}
+
+.btn-secondary {
+  @apply bg-zinc-800 border border-zinc-700 
+         text-zinc-100 font-medium py-2.5 px-4 
+         rounded-2xl transition-all duration-200 
+         hover:bg-zinc-700;
+}
+
+.btn-success {
+  @apply bg-emerald-500 text-black 
+         font-medium py-2.5 px-4 rounded-2xl 
+         transition-all duration-200 hover:brightness-95;
+}
+
+.btn-danger {
+  @apply bg-red-500 text-white 
+         font-medium py-2.5 px-4 rounded-2xl 
+         transition-all duration-200 hover:brightness-95;
+}
+
+/* Input styles */
+
+.input-field {
+  @apply w-full px-4 py-2 
+         border border-zinc-800 bg-zinc-900 text-zinc-100 
+         rounded-2xl 
+         focus:outline-none 
+         focus:ring-2 focus:ring-zinc-600 
+         focus:border-transparent 
+         transition duration-200;
+}
+
+.input-field.pl-10, input.pl-10 {
+  padding-left: 2.75rem !important;
+}
+
+.input-field.pl-11, input.pl-11 {
+  padding-left: 3rem !important;
+}
+
+.input-field.pl-12, input.pl-12 {
+  padding-left: 3.25rem !important;
+}
+
+.input-field.pr-10, input.pr-10 {
+  padding-right: 2.75rem !important;
+}
+
+.input-field.pr-12, input.pr-12 {
+  padding-right: 3.25rem !important;
+}
+
+/* Card styles */
+
+.card {
+  @apply bg-zinc-900 border border-zinc-800 
+         shadow-sm rounded-2xl p-6;
+}
+
+/* =============================================
+   Skeleton shimmer loader
+   ============================================= */
+
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    #27272a 0%,
+    #3f3f46 40%,
+    #27272a 80%
+  );
+  background-size: 600px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  will-change: background-position;
+}
+
+/* =============================================
+   Page transition — fade + slide up on enter
+   ============================================= */
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: pageEnter 0.25s ease-out both;
+}
+
+/* Legacy fadeIn kept for backward compat */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Typography helpers */
+
+.text-title {
+  @apply text-2xl font-semibold text-white;
+}
+
+.text-section {
+  @apply text-lg font-medium text-zinc-100;
+}
+
+.text-subtext {
+  @apply text-sm text-zinc-400;
+}

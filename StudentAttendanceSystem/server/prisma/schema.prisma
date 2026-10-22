@@ -1,0 +1,355 @@
+// This is your Prisma schema file.
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum Role {
+  admin
+  teacher
+  student
+}
+
+enum UserStatus {
+  active
+  inactive
+  archived
+}
+
+enum ClassStatus {
+  active
+  archived
+}
+
+enum SubjectStatus {
+  active
+  archived
+}
+
+enum EnrollmentStatus {
+  active
+  dropped
+}
+
+enum AssignmentStatus {
+  active
+  inactive
+}
+
+enum AttendanceStatus {
+  present
+  absent
+  late
+}
+
+enum AttendanceSource {
+  manual
+  face
+  legacy
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// USER (authentication for all roles)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id          String     @id @default(uuid())
+  name        String
+  email       String     @unique
+  password    String     // bcrypt hash
+  role        Role
+  status      UserStatus @default(active)
+  createdById String?
+
+  // Role-specific profile relations
+  teacherProfile   Teacher?
+  studentProfile   Student?
+
+  // Relations as actor
+  createdBy        User?   @relation("CreatedBy", fields: [createdById], references: [id])
+  createdUsers     User[]  @relation("CreatedBy")
+  assignments      TeacherAssignment[]
+  auditLogs        AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEACHER profile
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Teacher {
+  id           String     @id @default(uuid())
+  userId       String     @unique
+  user         User       @relation(fields: [userId], references: [id])
+  name         String
+  email        String     @unique
+  subject      String     @default("")
+  description  String     @default("")
+  profilePhoto String     @default("")
+  status       UserStatus @default(active)
+
+  // Relations
+  attendance         Attendance[]
+  teacherAssignments TeacherAssignment[] @relation("TeacherAssignments")
+  registeredStudents Student[]
+  academicAccess     TeacherAcademicAccess[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("teachers")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STUDENT profile
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Student {
+  id           String     @id @default(uuid())
+  userId       String?    @unique
+  user         User?      @relation(fields: [userId], references: [id])
+  studentId    String     @unique   // roll number / student code
+  name         String
+  email        String?    @unique
+  academicYear Int        @default(1) @map("academic_year")
+  branch       String     @default("CSE")
+  section      String     @default("A")
+  subsection   String     @default("A1")
+  class        String     @default("")
+  profilePhoto String     @default("")
+  // faceEmbedding stored as JSON array of floats
+  faceEmbedding Json      @default("[]")
+  status       UserStatus @default(active)
+
+  registeredById String?
+  registeredBy   Teacher? @relation(fields: [registeredById], references: [id])
+
+  enrollments        Enrollment[]
+  attendanceRecords  AttendanceRecord[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([academicYear, branch, section, subsection])
+  @@index([studentId])
+  @@map("students")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CLASS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Class {
+  id              String      @id @default(uuid())
+  name            String
+  code            String      @unique
+  department      String      @default("")
+  program         String      @default("")
+  year            String      @default("")
+  semester        String      @default("")
+  academicSession String      @default("")
+  status          ClassStatus @default(active)
+  createdById     String?
+
+  subjects    Subject[]
+  enrollments Enrollment[]
+  assignments TeacherAssignment[]
+  attendance  Attendance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("classes")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SUBJECT
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Subject {
+  id                  String        @id @default(uuid())
+  name                String
+  code                String
+  classId             String
+  class               Class         @relation(fields: [classId], references: [id])
+  academicSession     String        @default("")
+  credits             Int           @default(0)
+  attendanceThreshold Int           @default(75)
+  status              SubjectStatus @default(active)
+  createdById         String?
+
+  enrollments Enrollment[]
+  assignments TeacherAssignment[]
+  attendance  Attendance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Subject code must be unique per class + session
+  @@unique([code, classId, academicSession])
+  @@map("subjects")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENROLLMENT (student → class + subject)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Enrollment {
+  id              String           @id @default(uuid())
+  studentId       String
+  student         Student          @relation(fields: [studentId], references: [id])
+  classId         String
+  class           Class            @relation(fields: [classId], references: [id])
+  subjectId       String
+  subject         Subject          @relation(fields: [subjectId], references: [id])
+  academicSession String
+  status          EnrollmentStatus @default(active)
+  enrolledById    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // A student can only be actively enrolled once per subject+session
+  @@unique([studentId, subjectId, academicSession])
+  @@map("enrollments")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEACHER ASSIGNMENT (teacher → class + subject)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model TeacherAssignment {
+  id              String           @id @default(uuid())
+  teacherId       String
+  // Link to User so admin can query by User._id
+  teacherUser     User             @relation(fields: [teacherId], references: [id])
+  // Also link to Teacher profile for enriched queries
+  teacherProfile  Teacher?         @relation("TeacherAssignments", fields: [teacherProfileId], references: [id])
+  teacherProfileId String?
+  classId         String
+  class           Class            @relation(fields: [classId], references: [id])
+  subjectId       String
+  subject         Subject          @relation(fields: [subjectId], references: [id])
+  academicSession String
+  status          AssignmentStatus @default(active)
+  assignedById    String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teacherId, classId, subjectId, academicSession])
+  @@map("teacher_assignments")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ATTENDANCE SESSION (one per date+class+subject)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Attendance {
+  id              String           @id @default(uuid())
+  teacherId       String
+  teacher         Teacher          @relation(fields: [teacherId], references: [id])
+  date            DateTime
+  // RBAC fields (optional for legacy records)
+  classId         String?
+  class           Class?           @relation(fields: [classId], references: [id])
+  subjectId       String?
+  subject         Subject?         @relation(fields: [subjectId], references: [id])
+  academicSession String           @default("")
+  sessionLabel    String           @default("")
+  source          AttendanceSource @default(legacy)
+  // Legacy string fields (preserved for backward-compat)
+  subjectName     String           @default("")
+  className       String           @default("")
+  section         String           @default("")
+  // Correction audit trail
+  correctedById   String?
+  correctionReason String          @default("")
+  correctionAt    DateTime?
+
+  records AttendanceRecord[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("attendance")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ATTENDANCE RECORD (one per student per session)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AttendanceRecord {
+  id            String           @id @default(uuid())
+  attendanceId  String
+  attendance    Attendance       @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       Student          @relation(fields: [studentId], references: [id])
+  studentName   String           // denormalized for CSV performance
+  studentRollNo String           // denormalized for CSV performance
+  status        AttendanceStatus @default(absent)
+  markedAt      DateTime         @default(now())
+
+  @@unique([attendanceId, studentId])
+  @@map("attendance_records")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUDIT LOG
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorId     String
+  actor       User     @relation(fields: [actorId], references: [id])
+  actorName   String
+  actorRole   String
+  action      String
+  targetModel String   @default("")
+  targetId    String   @default("")
+  changes     Json     @default("{}")
+  ip          String   @default("")
+  userAgent   String   @default("")
+
+  createdAt DateTime @default(now())
+
+  @@index([actorId, createdAt(sort: Desc)])
+  @@index([targetModel, targetId])
+  @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEACHER ACADEMIC ACCESS (admin-granted access to academic groups)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model TeacherAcademicAccess {
+  id           String   @id @default(uuid())
+  teacherId    String
+  teacher      Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  academicYear Int      @map("academic_year")
+  branch       String   @default("CSE")
+  section      String   @default("A")
+  subsection   String   @default("ALL")
+  assignedById String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([teacherId, academicYear, branch, section, subsection])
+  @@index([teacherId])
+  @@index([academicYear, branch, section, subsection])
+  @@map("teacher_academic_access")
+}

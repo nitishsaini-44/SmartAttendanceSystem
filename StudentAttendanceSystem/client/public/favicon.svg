@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Solid indigo background -->
+  <rect width="32" height="32" rx="7" fill="#4f46e5"/>
+
+  <!-- Person head -->
+  <circle cx="13" cy="10" r="4.5" fill="white"/>
+
+  <!-- Person shoulders -->
+  <path d="M4 27 C4 19 8 17 13 17 C16.5 17 19 18.5 20.5 21"
+        fill="white"/>
+
+  <!-- Checkmark badge background (punches out of body color) -->
+  <circle cx="23" cy="23" r="6" fill="#4f46e5"/>
+  <circle cx="23" cy="23" r="5" fill="#3730a3"/>
+
+  <!-- Checkmark -->
+  <polyline points="19.5,23 22,25.5 26.5,20"
+            stroke="white" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round"
+            fill="none"/>
+</svg>
