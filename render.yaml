@@ -1,0 +1,36 @@
+services:
+  # ── Python Face Recognition Microservice ──
+  - type: web
+    name: sas-face-api
+    env: python
+    rootDir: StudentAttendanceSystem/server/python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --timeout 120 --workers 1 api_server:app
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: HF_TOKEN
+        sync: false
+
+  # ── Node.js / Express Backend API ──
+  - type: web
+    name: sas-backend
+    env: node
+    rootDir: StudentAttendanceSystem/server
+    buildCommand: npm install && npx prisma generate
+    startCommand: node src/app.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: FRONTEND_URL
+        sync: false
+      - key: FACE_API_URL
+        sync: false

@@ -1,0 +1,87 @@
+# ── Node.js ───────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Environment Variables ─────────────────────────────────────────────────────
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+!.env.docker.example
+
+# ── Build Artifacts ───────────────────────────────────────────────────────────
+dist/
+build/
+**/dist/
+**/build/
+
+# ── Uploads (local profile photos — not committed to repo) ────────────────────
+uploads/
+**/uploads/
+StudentAttendanceSystem/server/uploads/
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+eggs/
+.eggs/
+
+# Python virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# InsightFace downloaded model weights (large binary files)
+# Stored at: C:/Users/{user}/.insightface/models/
+# They are auto-downloaded on first run — no need to commit
+.insightface/
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+logs/
+*.log
+*.log.*
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ── IDEs & Editors ────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+.pytest_cache/
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+*.bak
+*.tmp
+*.local
+*.orig
+.cache/

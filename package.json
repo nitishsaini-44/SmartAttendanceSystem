@@ -1,0 +1,34 @@
+{
+  "name": "smart-attendance-system",
+  "version": "1.0.0",
+  "description": "Complete Smart Attendance System with Face Recognition",
+  "scripts": {
+    "install:all": "npm install && cd StudentAttendanceSystem/server && npm install && cd ../client && npm install",
+    "install:python": ".venv\\Scripts\\pip install -r StudentAttendanceSystem/server/python/requirements.txt",
+    "setup": "npm run install:all && npm run install:python",
+    "start:python": "cd StudentAttendanceSystem/server/python && ..\\..\\..\\.venv\\Scripts\\python api_server.py",
+    "start:server": "cd StudentAttendanceSystem/server && npm run dev",
+    "start:client": "cd StudentAttendanceSystem/client && npm run dev",
+    "dev": "concurrently --kill-others-on-fail -n \"PYTHON,SERVER,CLIENT\" -c \"yellow,blue,green\" \"npm run start:python\" \"npm run start:server\" \"npm run start:client\"",
+    "start": "concurrently --kill-others-on-fail -n \"PYTHON,SERVER,CLIENT\" -c \"yellow,blue,green\" \"npm run start:python\" \"cd StudentAttendanceSystem/server && npm start\" \"cd StudentAttendanceSystem/client && npm run preview\"",
+    "build:client": "cd StudentAttendanceSystem/client && npm run build",
+    "build:server": "cd StudentAttendanceSystem/server && npm run build",
+    "build": "npm run build:server && npm run build:client",
+    "seed:admin": "cd StudentAttendanceSystem/server && npm run seed:admin",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "keywords": [
+    "attendance",
+    "face-recognition",
+    "student-management"
+  ],
+  "license": "MIT"
+}
