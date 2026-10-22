@@ -27,42 +27,18 @@ const app = express();
 app.disable('x-powered-by');
 
 // ── Middleware ────────────────────────────────────────────────────────────────
-// Support comma-separated FRONTEND_URL and strip any trailing slashes
-const configuredOrigins = (process.env.FRONTEND_URL || '')
-    .split(',')
-    .map(url => url.trim().replace(/\/+$/, ''))
-    .filter(Boolean);
-
-const defaultDevOrigins = [
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://localhost:3000',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:5174',
-    'http://127.0.0.1:3000'
-];
-
-app.use(cors({
+const corsOptions = {
     origin: (origin, callback) => {
-        // Allow requests with no origin (e.g. mobile apps, server-to-server, curl, Postman)
-        if (!origin) return callback(null, true);
-
-        const cleanOrigin = origin.replace(/\/+$/, '');
-        const isAllowed =
-            configuredOrigins.includes(cleanOrigin) ||
-            configuredOrigins.includes('*') ||
-            defaultDevOrigins.includes(cleanOrigin) ||
-            process.env.NODE_ENV !== 'production';
-
-        if (isAllowed) {
-            return callback(null, true);
-        }
-        return callback(new Error(`CORS blocked for origin: ${origin}`));
+        // Dynamically reflect the requesting origin to support Vercel, localhost, and custom domains
+        callback(null, true);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
