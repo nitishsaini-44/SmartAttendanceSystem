@@ -74,13 +74,18 @@ app.get(['/health', '/api/health'], async (req, res) => {
     }
 });
 
-// ── Routes ────────────────────────────────────────────────────────────────────
-app.use('/api/auth',       authRoutes);
-app.use('/api/admin',      adminRoutes);
-app.use('/api/student',    studentPortalRoutes);
-app.use('/api/students',   studentRoutes);
-app.use('/api/attendance', attendanceRoutes);
-app.use('/api/teacher',    teacherRoutes);
+// ── Routes (mounted on both /api and root paths for maximum compatibility) ────
+const mountRoutes = (prefix = '') => {
+    app.use(`${prefix}/auth`,       authRoutes);
+    app.use(`${prefix}/admin`,      adminRoutes);
+    app.use(`${prefix}/student`,    studentPortalRoutes);
+    app.use(`${prefix}/students`,   studentRoutes);
+    app.use(`${prefix}/attendance`, attendanceRoutes);
+    app.use(`${prefix}/teacher`,    teacherRoutes);
+};
+
+mountRoutes('/api');
+mountRoutes('');
 
 app.use(errorHandler);
 app.use((req, res) => res.status(404).json({ success: false, message: 'Route not found' }));
