@@ -541,12 +541,12 @@ const StudentList = () => {
                 </div>
             )}
 
-            {/* ===== STUDENT INFO MODAL ===== */}
+            {/* ===== STUDENT INFO MODAL (Properly centered & constrained to viewport) ===== */}
             {selectedStudent && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-                    <div className="w-full max-w-lg rounded-2xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                        {/* Header */}
-                        <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4 bg-zinc-950/60">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto py-6 sm:py-8">
+                    <div className="relative w-full max-w-lg my-auto max-h-[85vh] flex flex-col rounded-2xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                        {/* Header (fixed at top of modal) */}
+                        <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4 bg-zinc-950/80 flex-shrink-0">
                             <div className="flex items-center gap-2">
                                 <User className="h-5 w-5 text-blue-400" />
                                 <h3 className="font-semibold text-white">Student Information</h3>
@@ -559,8 +559,8 @@ const StudentList = () => {
                             </button>
                         </div>
 
-                        {/* Body */}
-                        <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+                        {/* Body (scrollable within modal) */}
+                        <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
                             {/* Profile Card */}
                             <div className="flex items-center gap-4 rounded-xl border border-zinc-800 bg-zinc-800/40 p-4">
                                 <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-800">
@@ -673,8 +673,8 @@ const StudentList = () => {
                             </div>
                         </div>
 
-                        {/* Footer */}
-                        <div className="border-t border-zinc-800 px-5 py-3 bg-zinc-950/60 flex justify-end">
+                        {/* Footer (fixed at bottom of modal) */}
+                        <div className="border-t border-zinc-800 px-5 py-3.5 bg-zinc-950/80 flex justify-end flex-shrink-0">
                             <button
                                 onClick={() => setSelectedStudent(null)}
                                 className="rounded-xl bg-zinc-800 px-4 py-2 text-xs font-medium text-white hover:bg-zinc-700 transition-colors"

@@ -30,14 +30,15 @@ const TeacherProfile = () => {
             <Card className="overflow-hidden border-zinc-800 bg-zinc-900/80 backdrop-blur">
                 <div className="h-32 bg-gradient-to-r from-blue-900/40 via-zinc-900 to-indigo-900/40 border-b border-zinc-800"></div>
 
-                <div className="relative px-6 pb-6">
-                    <div className="absolute -top-14 left-6">
-                        <div className="relative group">
+                <div className="relative px-4 sm:px-6 pb-6">
+                    {/* Top Row: Avatar & Action Buttons (responsive flex layout, zero overlap) */}
+                    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 -mt-14 mb-4">
+                        <div className="relative group self-start">
                             {profilePhotoUrl ? (
-                                <img src={profilePhotoUrl} alt="Profile" className="h-28 w-28 rounded-2xl border-4 border-zinc-900 object-cover shadow-xl" />
+                                <img src={profilePhotoUrl} alt="Profile" className="h-24 w-24 sm:h-28 sm:w-28 rounded-2xl border-4 border-zinc-900 object-cover shadow-xl" />
                             ) : (
-                                <div className="flex h-28 w-28 items-center justify-center rounded-2xl border-4 border-zinc-900 bg-zinc-800 shadow-xl">
-                                    <User className="h-12 w-12 text-zinc-300" />
+                                <div className="flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-2xl border-4 border-zinc-900 bg-zinc-800 shadow-xl">
+                                    <User className="h-10 w-10 sm:h-12 sm:w-12 text-zinc-300" />
                                 </div>
                             )}
                             <Link 
@@ -48,34 +49,36 @@ const TeacherProfile = () => {
                                 <Camera className="h-4 w-4" />
                             </Link>
                         </div>
+
+                        {/* Action buttons (Change Password is fully visible without overlap; duplicate logout hidden on mobile) */}
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                            <Link 
+                                to="/change-password" 
+                                className="rounded-xl border border-zinc-700 bg-zinc-800/80 px-3.5 py-2 text-xs sm:text-sm font-medium text-zinc-200 transition-all duration-200 hover:bg-zinc-700 hover:text-white flex items-center gap-2 shadow-sm"
+                            >
+                                <Key className="h-4 w-4 text-amber-400" />
+                                <span>Change Password</span>
+                            </Link>
+                            <Link 
+                                to="/profile/edit" 
+                                className="rounded-xl border border-blue-500/30 bg-blue-600/20 px-3.5 py-2 text-xs sm:text-sm font-medium text-blue-200 transition-all duration-200 hover:bg-blue-600/30 hover:border-blue-500/50 flex items-center gap-2 shadow-sm"
+                            >
+                                <Edit3 className="h-4 w-4 text-blue-400" />
+                                <span>Edit Profile</span>
+                            </Link>
+                            {/* Hidden on mobile to avoid duplicate logout buttons; single logout card exists in settings below */}
+                            <button 
+                                onClick={handleLogout}
+                                className="hidden sm:flex rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2 text-xs sm:text-sm font-medium text-red-300 transition-all duration-200 hover:bg-red-500/20 hover:border-red-500/50 items-center gap-2 shadow-sm"
+                                title="Sign out of system"
+                            >
+                                <LogOut className="h-4 w-4 text-red-400" />
+                                <span>Log Out</span>
+                            </button>
+                        </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3 pt-4">
-                        <Link 
-                            to="/change-password" 
-                            className="rounded-xl border border-zinc-700 bg-zinc-800/80 px-3.5 py-2 text-xs sm:text-sm font-medium text-zinc-200 transition-all duration-200 hover:bg-zinc-700 hover:text-white flex items-center gap-2 shadow-sm"
-                        >
-                            <Key className="h-4 w-4 text-amber-400" />
-                            <span>Change Password</span>
-                        </Link>
-                        <Link 
-                            to="/profile/edit" 
-                            className="rounded-xl border border-blue-500/30 bg-blue-600/20 px-3.5 py-2 text-xs sm:text-sm font-medium text-blue-200 transition-all duration-200 hover:bg-blue-600/30 hover:border-blue-500/50 flex items-center gap-2 shadow-sm"
-                        >
-                            <Edit3 className="h-4 w-4 text-blue-400" />
-                            <span>Edit Profile</span>
-                        </Link>
-                        <button 
-                            onClick={handleLogout}
-                            className="rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2 text-xs sm:text-sm font-medium text-red-300 transition-all duration-200 hover:bg-red-500/20 hover:border-red-500/50 flex items-center gap-2 shadow-sm"
-                            title="Sign out of system"
-                        >
-                            <LogOut className="h-4 w-4 text-red-400" />
-                            <span>Log Out</span>
-                        </button>
-                    </div>
-
-                    <div className="mt-8">
+                    <div className="mt-4">
                         <div className="flex flex-wrap items-center gap-3">
                             <h1 className="text-2xl font-bold text-white tracking-tight">{displayName}</h1>
                             <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-0.5 text-xs font-medium text-blue-300 capitalize">

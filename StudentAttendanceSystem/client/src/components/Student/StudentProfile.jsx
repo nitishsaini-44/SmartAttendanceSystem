@@ -35,7 +35,7 @@ const StudentProfile = () => {
                 <h1 className="text-2xl font-bold text-white tracking-tight">My Profile</h1>
                 <button
                     onClick={handleLogout}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-300 hover:bg-red-500/20 transition-colors"
+                    className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-300 hover:bg-red-500/20 transition-colors"
                 >
                     <LogOut className="h-3.5 w-3.5" />
                     <span>Log Out</span>

@@ -352,9 +352,9 @@ const TeacherManagement = () => {
                 </div>
             )}
 
-            {/* Table */}
-            <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
-                <table className="min-w-full text-sm">
+            {/* Table (Horizontal scroll on mobile) */}
+            <div className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900 shadow-sm">
+                <table className="min-w-[720px] w-full text-sm">
                     <thead className="border-b border-zinc-800 bg-zinc-950">
                         <tr>
                             {['Name', 'Email', 'Subject', 'Student Access', 'Status', 'Actions'].map(h => (
