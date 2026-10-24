@@ -7,6 +7,9 @@ import PrivateRoute from './components/common/PrivateRoute';
 import { useAuth } from './context/AuthContext';
 import PageSkeleton from './components/common/PageSkeleton';
 
+// ── Landing page ──────────────────────────────────────────────────────────────
+const LandingPage    = lazy(() => import('./components/Landing/LandingPage'));
+
 // ── Shared / Auth pages ───────────────────────────────────────────────────────
 const Login          = lazy(() => import('./components/Auth/Login'));
 const ChangePassword = lazy(() => import('./components/Auth/ChangePassword'));
@@ -36,18 +39,19 @@ const App = () => {
     const location = useLocation();
     const { isAuthenticated, role } = useAuth();
     const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+    const isLandingPage = location.pathname === '/';
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
         <div className="min-h-screen bg-zinc-950 text-zinc-100">
-            {!isAuthPage && isAuthenticated && (
+            {!isAuthPage && !isLandingPage && isAuthenticated && (
                 <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             )}
-            <div className={!isAuthPage && isAuthenticated ? 'lg:pl-72' : ''}>
-                {!isAuthPage && isAuthenticated && (
+            <div className={!isAuthPage && !isLandingPage && isAuthenticated ? 'lg:pl-72' : ''}>
+                {!isAuthPage && !isLandingPage && isAuthenticated && (
                     <Navbar onMenuToggle={() => setSidebarOpen(prev => !prev)} />
                 )}
-                <main className={isAuthPage ? 'min-h-screen' : 'px-4 py-4 sm:px-6 sm:py-6'}>
+                <main className={isAuthPage || isLandingPage ? 'min-h-screen' : 'px-4 py-4 sm:px-6 sm:py-6'}>
                     <Suspense fallback={<PageSkeleton />}>
                         <Routes>
                             {/* ── Public Routes ── */}
@@ -149,14 +153,8 @@ const App = () => {
                                 </RoleRoute>
                             } />
 
-                            {/* ── Smart root redirect by role ── */}
-                            <Route path="/" element={
-                                <PrivateRoute>
-                                    {role === 'admin'   ? <Navigate to="/admin/dashboard"   replace /> :
-                                     role === 'student' ? <Navigate to="/student/dashboard" replace /> :
-                                                          <Navigate to="/dashboard"          replace />}
-                                </PrivateRoute>
-                            } />
+                            {/* ── Public landing page / smart root redirect by role ── */}
+                            <Route path="/" element={<LandingPage />} />
 
                             {/* ── 404 fallback ── */}
                             <Route path="*" element={
