@@ -215,4 +215,16 @@ body {
     linear-gradient(90deg, rgba(63,63,70,0.3) 1px, transparent 1px);
   background-size: 48px 48px;
 }
+
+/* Autofill dark theme preservation (prevents Chrome/Edge from forcing white background) */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #09090b inset !important;
+  -webkit-text-fill-color: #f4f4f5 !important;
+  caret-color: #f4f4f5 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 

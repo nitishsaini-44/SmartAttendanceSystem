@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -19,6 +19,7 @@ const Login = () => {
     const [errorMessage, setErrorMessage] = useState('');
     const [showHelpModal, setShowHelpModal] = useState(false);
     const [rememberMe, setRememberMe] = useState(true);
+    const emailInputRef = useRef(null);
 
     const { login, isAuthenticated, role } = useAuth();
     const navigate = useNavigate();
@@ -33,7 +34,8 @@ const Login = () => {
     }, [isAuthenticated, role, navigate]);
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
         if (errorMessage) setErrorMessage('');
     };
 
@@ -54,6 +56,11 @@ const Login = () => {
             }
             setErrorMessage(msg);
             toast.error(msg);
+            // Clear BOTH email and password fields if credentials are wrong
+            setFormData({ email: '', password: '' });
+            setTimeout(() => {
+                emailInputRef.current?.focus();
+            }, 50);
         } finally {
             setLoading(false);
         }
@@ -241,19 +248,20 @@ const Login = () => {
                                     <div className="relative">
                                         <Mail className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
                                         <input
+                                            ref={emailInputRef}
                                             type="email"
                                             name="email"
                                             id="login-email-input"
                                             value={formData.email}
                                             onChange={handleChange}
                                             required
-                                            autoComplete="email"
+                                            autoComplete="off"
                                             placeholder="admin@institution.edu"
-                                            className={`w-full rounded-2xl border ${
+                                            className={`w-full rounded-2xl border bg-zinc-950 px-4 py-2.5 sm:py-3 pl-10 text-sm text-white placeholder-zinc-500 focus:outline-none transition-all ${
                                                 errorMessage
-                                                    ? 'border-red-500/60 focus:border-red-400 focus:ring-red-400'
-                                                    : 'border-zinc-800 bg-zinc-950/70 hover:border-zinc-700 focus:border-zinc-400 focus:ring-zinc-400'
-                                            } px-4 py-2.5 sm:py-3 pl-10 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-1 transition-all`}
+                                                    ? 'border-red-500/70 focus:border-red-400 focus:ring-1 focus:ring-red-400/30'
+                                                    : 'border-zinc-800 hover:border-zinc-700 focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/30'
+                                            }`}
                                         />
                                     </div>
                                 </div>
@@ -281,13 +289,13 @@ const Login = () => {
                                             value={formData.password}
                                             onChange={handleChange}
                                             required
-                                            autoComplete="current-password"
+                                            autoComplete="new-password"
                                             placeholder="••••••••••••"
-                                            className={`w-full rounded-2xl border ${
+                                            className={`w-full rounded-2xl border bg-zinc-950 px-4 py-2.5 sm:py-3 pl-10 pr-10 text-sm text-white placeholder-zinc-500 focus:outline-none transition-all ${
                                                 errorMessage
-                                                    ? 'border-red-500/60 focus:border-red-400 focus:ring-red-400'
-                                                    : 'border-zinc-800 bg-zinc-950/70 hover:border-zinc-700 focus:border-zinc-400 focus:ring-zinc-400'
-                                            } px-4 py-2.5 sm:py-3 pl-10 pr-10 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-1 transition-all`}
+                                                    ? 'border-red-500/70 focus:border-red-400 focus:ring-1 focus:ring-red-400/30'
+                                                    : 'border-zinc-800 hover:border-zinc-700 focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/30'
+                                            }`}
                                         />
                                         <button
                                             type="button"
