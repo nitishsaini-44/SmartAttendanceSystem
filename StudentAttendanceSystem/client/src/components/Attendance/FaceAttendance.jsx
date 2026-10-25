@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import attendanceService from '../../services/attendanceService';
-import { Camera, CameraOff, Users, User, CheckCircle, AlertCircle, Scan, FlipHorizontal } from 'lucide-react';
+import { Camera, CameraOff, Users, User, CheckCircle, AlertCircle, Scan, FlipHorizontal, UserCheck, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const FaceAttendance = ({ onAttendanceMarked, selectedBatch }) => {
@@ -297,51 +297,127 @@ const FaceAttendance = ({ onAttendanceMarked, selectedBatch }) => {
 
             {/* Result panel */}
             {lastResult && (
-                <div className={`mt-4 rounded-2xl border p-4 ${lastResult.success ? 'border-emerald-900 bg-emerald-500/10' : 'border-red-900 bg-red-500/10'}`}>
+                <div className={`mt-4 rounded-2xl border p-4 transition-all duration-300 ${lastResult.success ? 'border-emerald-900/60 bg-emerald-500/10' : 'border-red-900/60 bg-red-500/10'}`}>
                     <div className="flex items-start gap-3">
                         {lastResult.success ? (
-                            <CheckCircle className="h-6 w-6 text-emerald-300 flex-shrink-0" />
+                            <CheckCircle className="h-6 w-6 text-emerald-400 flex-shrink-0 mt-0.5" />
                         ) : (
-                            <AlertCircle className="h-6 w-6 text-red-300 flex-shrink-0" />
+                            <AlertCircle className="h-6 w-6 text-red-400 flex-shrink-0 mt-0.5" />
                         )}
-                        <div className="min-w-0">
-                            <p className={`font-semibold ${lastResult.success ? 'text-emerald-300' : 'text-red-300'}`}>
-                                {lastResult.message}
+                        <div className="min-w-0 flex-1">
+                            <p className={`font-semibold text-base ${lastResult.success ? 'text-emerald-300' : 'text-red-300'}`}>
+                                {lastResult.message || (lastResult.success ? 'Face scanning completed successfully' : 'Face recognition failed')}
                             </p>
 
+                            {/* Single Face Result Display */}
                             {lastResult.success && mode === 'single' && lastResult.student && (
-                                <p className="mt-1 text-sm text-zinc-300">
-                                    Student: <span className="font-semibold">{lastResult.student.name}</span> (ID: {lastResult.student.studentId})
-                                    <br />
-                                    Confidence: <span className="font-semibold">{(lastResult.student.confidence * 100).toFixed(1)}%</span>
-                                </p>
-                            )}
-
-                            {lastResult.success && mode === 'multiple' && (
-                                <div className="mt-2 text-sm text-zinc-300">
-                                    <p className="font-medium">Total faces detected: {lastResult.totalFaces}</p>
-                                    {lastResult.markedStudents && lastResult.markedStudents.length > 0 && (
-                                        <div className="mt-1">
-                                            <p className="font-semibold text-emerald-300">Marked Present:</p>
-                                            <ul className="list-disc list-inside">
-                                                {lastResult.markedStudents.map((s, i) => (
-                                                    <li key={i}>{s.name} ({(s.confidence * 100).toFixed(1)}%)</li>
-                                                ))}
-                                            </ul>
+                                <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-950/40 p-3 text-xs">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-bold text-zinc-100">{lastResult.student.name}</p>
+                                            <p className="text-zinc-400 font-mono">ID: {lastResult.student.studentId}</p>
                                         </div>
-                                    )}
-                                    {lastResult.alreadyMarkedStudents && lastResult.alreadyMarkedStudents.length > 0 && (
-                                        <p className="mt-1 font-medium text-amber-300">
-                                            Already marked: {lastResult.alreadyMarkedStudents.map(s => s.name).join(', ')}
-                                        </p>
-                                    )}
-                                    {lastResult.unrecognizedCount > 0 && (
-                                        <p className="mt-1 font-medium text-zinc-400">
-                                            Unrecognized faces: {lastResult.unrecognizedCount}
-                                        </p>
-                                    )}
+                                        <div className="text-right">
+                                            <span className="inline-block rounded-md bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-300 border border-emerald-500/30">
+                                                {(lastResult.student.confidence * 100).toFixed(1)}% match
+                                            </span>
+                                            <p className="mt-1 text-[11px] font-medium text-emerald-400">
+                                                {lastResult.alreadyMarked ? 'Already Present' : 'Marked Present'}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
+
+                            {/* Multiple Faces Result Display */}
+                            {lastResult.success && mode === 'multiple' && (() => {
+                                const markedList = lastResult.markedStudents || (lastResult.results ? lastResult.results.filter(r => r.status === 'marked') : []);
+                                const alreadyList = lastResult.alreadyMarkedStudents || (lastResult.results ? lastResult.results.filter(r => r.status === 'already_marked') : []);
+                                const totalDetected = lastResult.totalFaces !== undefined 
+                                    ? lastResult.totalFaces 
+                                    : (markedList.length + alreadyList.length + (lastResult.unrecognizedCount || 0));
+                                const unrecognized = lastResult.unrecognizedCount || 0;
+
+                                return (
+                                    <div className="mt-3 space-y-3">
+                                        {/* Status badges header */}
+                                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                                            <span className="rounded-lg bg-zinc-800/90 px-2.5 py-1 font-medium text-zinc-200 border border-zinc-700">
+                                                👥 Total Faces: <strong className="text-white">{totalDetected}</strong>
+                                            </span>
+                                            {markedList.length > 0 && (
+                                                <span className="rounded-lg bg-emerald-500/20 px-2.5 py-1 font-semibold text-emerald-300 border border-emerald-500/40">
+                                                    ✓ Newly Marked: {markedList.length}
+                                                </span>
+                                            )}
+                                            {alreadyList.length > 0 && (
+                                                <span className="rounded-lg bg-amber-500/20 px-2.5 py-1 font-semibold text-amber-300 border border-amber-500/40">
+                                                    ⏳ Already Present: {alreadyList.length}
+                                                </span>
+                                            )}
+                                            {unrecognized > 0 && (
+                                                <span className="rounded-lg bg-zinc-800 px-2.5 py-1 font-medium text-zinc-400 border border-zinc-700">
+                                                    ❓ Unrecognized: {unrecognized}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* Newly Marked Students Cards */}
+                                        {markedList.length > 0 && (
+                                            <div>
+                                                <h4 className="text-xs font-semibold uppercase tracking-wider text-emerald-400 mb-2 flex items-center gap-1.5">
+                                                    <UserCheck className="h-4 w-4" /> Marked Present Now ({markedList.length})
+                                                </h4>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                    {markedList.map((s, idx) => (
+                                                        <div key={idx} className="flex items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-950/40 px-3 py-2 text-xs shadow-sm">
+                                                            <div className="min-w-0 pr-2">
+                                                                <p className="font-semibold text-zinc-100 truncate">{s.name}</p>
+                                                                <p className="text-[11px] text-zinc-400 font-mono">{s.studentId || s.studentRollNo}</p>
+                                                            </div>
+                                                            <div className="text-right flex-shrink-0">
+                                                                <span className="inline-block rounded-md bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300 border border-emerald-500/30">
+                                                                    {(s.confidence * 100).toFixed(1)}% match
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Already Marked Students Cards */}
+                                        {alreadyList.length > 0 && (
+                                            <div>
+                                                <h4 className="text-xs font-semibold uppercase tracking-wider text-amber-400 mb-2 flex items-center gap-1.5">
+                                                    <Clock className="h-4 w-4" /> Already Marked Present Earlier ({alreadyList.length})
+                                                </h4>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                    {alreadyList.map((s, idx) => (
+                                                        <div key={idx} className="flex items-center justify-between rounded-xl border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-xs shadow-sm">
+                                                            <div className="min-w-0 pr-2">
+                                                                <p className="font-semibold text-zinc-200 truncate">{s.name}</p>
+                                                                <p className="text-[11px] text-zinc-400 font-mono">{s.studentId || s.studentRollNo}</p>
+                                                            </div>
+                                                            <div className="text-right flex-shrink-0">
+                                                                <span className="inline-block rounded-md bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300 border border-amber-500/30">
+                                                                    {(s.confidence * 100).toFixed(1)}% match
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {markedList.length === 0 && alreadyList.length === 0 && (
+                                            <p className="text-xs text-zinc-400 italic">
+                                                No registered students from this batch were recognized from the detected face(s). Ensure student face profiles are enrolled and lighting is clear.
+                                            </p>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>

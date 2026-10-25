@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import api from '../../services/api';
-import { CheckCircle2, XCircle, Clock, AlertTriangle, Loader2, ChevronDown } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, AlertTriangle, Loader2, ChevronDown, User } from 'lucide-react';
 
 const statusIcon = (status) => {
     if (status === 'present') return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
@@ -28,7 +28,7 @@ const ProgressBar = ({ pct, threshold }) => {
 };
 
 // ── Subject accordion ─────────────────────────────────────────────────────────
-const SubjectSection = ({ subject, records, conducted, attended, missed, percentage, threshold, belowThreshold }) => {
+const SubjectSection = ({ subject, teacherName, records, conducted, attended, missed, percentage, threshold, belowThreshold }) => {
     const [open, setOpen] = useState(false);
 
     return (
@@ -40,6 +40,11 @@ const SubjectSection = ({ subject, records, conducted, attended, missed, percent
                     <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-white">{subject?.name}</p>
                         <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400">{subject?.code}</span>
+                        {teacherName && (
+                            <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs text-emerald-400 flex items-center gap-1">
+                                <User className="h-3 w-3" /> {teacherName}
+                            </span>
+                        )}
                         {belowThreshold && (
                             <span className="flex items-center gap-1 rounded-full bg-red-950/60 border border-red-900/50 px-2 py-0.5 text-xs text-red-400">
                                 <AlertTriangle className="h-3 w-3" /> Below {threshold}%
@@ -135,6 +140,7 @@ const StudentAttendanceView = () => {
                         <SubjectSection
                             key={item.enrollment?.id}
                             subject={item.enrollment?.subject}
+                            teacherName={item.teacherName || item.enrollment?.teacherName}
                             records={item.records}
                             conducted={item.totalSessions}
                             attended={item.attended}

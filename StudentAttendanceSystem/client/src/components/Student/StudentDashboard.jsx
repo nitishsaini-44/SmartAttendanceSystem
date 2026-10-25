@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { BookOpen, CalendarCheck, AlertTriangle, TrendingUp, Loader2, ChevronRight } from 'lucide-react';
+import { BookOpen, CalendarCheck, AlertTriangle, TrendingUp, Loader2, ChevronRight, User } from 'lucide-react';
 
 // ── Attendance ring ────────────────────────────────────────────────────────────
 const AttendanceRing = ({ pct, size = 80 }) => {
@@ -39,6 +39,12 @@ const SubjectCard = ({ subject }) => {
                     <p className="font-semibold text-white truncate">{subject.subjectName}</p>
                     <p className="text-xs text-zinc-500">{subject.subjectCode}</p>
                     <p className="mt-0.5 text-xs text-zinc-400">{subject.className} · {subject.academicSession}</p>
+                    {subject.teacherName && (
+                        <p className="mt-1.5 flex items-center gap-1.5 text-xs text-zinc-300">
+                            <User className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0" />
+                            <span className="font-medium truncate">{subject.teacherName}</span>
+                        </p>
+                    )}
 
                     <div className="mt-3 grid grid-cols-3 gap-2 text-center">
                         {[

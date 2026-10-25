@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import attendanceService from '../../services/attendanceService';
+import attendanceService, { isSessionMatchingBatch } from '../../services/attendanceService';
 import studentService from '../../services/studentService';
 import { Clock, Download, ClipboardList, Trash2, Users } from 'lucide-react';
 import Loader from '../common/Loader';
@@ -28,8 +28,14 @@ const AttendanceList = ({ selectedBatch }) => {
     const fetchTodayAttendance = async () => {
         try {
             setLoading(true);
+            const params = selectedBatch ? {
+                branch: selectedBatch.branch,
+                section: selectedBatch.section,
+                subsection: selectedBatch.subsection,
+                academicYear: selectedBatch.academicYear
+            } : {};
             const [attRes, stuRes] = await Promise.all([
-                attendanceService.getTodayAttendance().catch(() => ({ sessions: [], attendance: [] })),
+                attendanceService.getTodayAttendance(params).catch(() => ({ sessions: [], attendance: [] })),
                 studentService.getAllStudents().catch(() => ({ students: [] }))
             ]);
 
@@ -100,8 +106,13 @@ const AttendanceList = ({ selectedBatch }) => {
 
     // Flatten, deduplicate, and strictly scope records to selectedBatch ONLY
     const { batchRecords, filteredRecords, presentCount, absentCount } = useMemo(() => {
+        // Only consider attendance sessions that specifically belong to the active selected batch
+        const matchingSessions = selectedBatch 
+            ? sessions.filter(sess => isSessionMatchingBatch(sess, selectedBatch))
+            : sessions;
+
         const rawList = [];
-        sessions.forEach(sess => {
+        matchingSessions.forEach(sess => {
             (sess.records || []).forEach(record => {
                 rawList.push({
                     ...record,

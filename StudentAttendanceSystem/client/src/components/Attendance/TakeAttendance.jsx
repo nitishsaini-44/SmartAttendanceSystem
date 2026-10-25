@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import studentService from '../../services/studentService';
-import attendanceService from '../../services/attendanceService';
+import attendanceService, { isSessionMatchingBatch } from '../../services/attendanceService';
 import { Check, X, Users, Save } from 'lucide-react';
 import Loader from '../common/Loader';
 import toast from 'react-hot-toast';
@@ -19,23 +19,33 @@ const TakeAttendance = ({ onAttendanceMarked, selectedBatch }) => {
     const fetchStudentsAndTodayAttendance = async () => {
         setLoading(true);
         try {
+            const params = selectedBatch ? {
+                branch: selectedBatch.branch,
+                section: selectedBatch.section,
+                subsection: selectedBatch.subsection,
+                academicYear: selectedBatch.academicYear
+            } : {};
             // Fetch students and today's attendance in parallel
             const [studentsResponse, todayAttendanceResponse] = await Promise.all([
                 studentService.getAllStudents(),
-                attendanceService.getTodayAttendance().catch(() => ({ sessions: [], attendance: [] }))
+                attendanceService.getTodayAttendance(params).catch(() => ({ sessions: [], attendance: [] }))
             ]);
 
             const studentList = studentsResponse.students || [];
             setAllStudents(studentList);
 
-            // Aggregate attendance records across ALL sessions today (face recognition, manual, etc.)
+            // Aggregate attendance records across sessions matching THIS specific batch ONLY
             const sessions = todayAttendanceResponse.sessions || todayAttendanceResponse.attendance || [];
+            const matchingSessions = selectedBatch 
+                ? sessions.filter(session => isSessionMatchingBatch(session, selectedBatch))
+                : sessions;
+
             const attendanceMap = {};
-            sessions.forEach(session => {
+            matchingSessions.forEach(session => {
                 (session.records || []).forEach(record => {
                     const studentId = record.studentId?._id || record.studentId;
                     if (studentId) {
-                        // If marked present in any session today, preserve 'present'
+                        // If marked present in any matching session today, preserve 'present'
                         if (record.status === 'present' || !attendanceMap[studentId]) {
                             attendanceMap[studentId] = record.status;
                         }
@@ -111,10 +121,10 @@ const TakeAttendance = ({ onAttendanceMarked, selectedBatch }) => {
             const payload = {
                 records,
                 class: selectedBatch?.branch || '',
-                section: selectedBatch?.subsection || selectedBatch?.section || '',
-                academicYear: selectedBatch?.academicYear,
-                branch: selectedBatch?.branch,
-                subsection: selectedBatch?.subsection
+                branch: selectedBatch?.branch || '',
+                section: selectedBatch?.section || '',
+                subsection: selectedBatch?.subsection || '',
+                academicYear: selectedBatch?.academicYear
             };
 
             await attendanceService.takeAttendance(payload);

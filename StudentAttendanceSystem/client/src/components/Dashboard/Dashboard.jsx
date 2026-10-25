@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import studentService from '../../services/studentService';
-import attendanceService from '../../services/attendanceService';
+import attendanceService, { isSessionMatchingBatch } from '../../services/attendanceService';
 import api from '../../services/api';
 import {
     Users,
@@ -126,13 +126,22 @@ const Dashboard = () => {
             const enrolledIds = new Set(enrolledStudents.map(s => s.id || s._id));
             const enrolledRolls = new Set(enrolledStudents.map(s => s.studentId));
 
-            // Find marked records for students of this batch
+            // Find marked records from sessions matching THIS specific batch ONLY
+            const batchSessions = todaySessions.filter(sess => isSessionMatchingBatch(sess, batch));
             const batchRecords = [];
-            rawRecords.forEach(r => {
-                const belongsToBatch = enrolledIds.has(r.studentId) || enrolledRolls.has(r.studentRollNo);
-                if (belongsToBatch) {
-                    batchRecords.push(r);
-                }
+            batchSessions.forEach(sess => {
+                (sess.records || []).forEach(r => {
+                    const belongsToBatch = enrolledIds.has(r.studentId) || enrolledRolls.has(r.studentRollNo);
+                    if (belongsToBatch) {
+                        batchRecords.push({
+                            ...r,
+                            sessionId: sess.id,
+                            sessionClass: sess.className,
+                            sessionSection: sess.section,
+                            sessionSource: sess.source || 'manual'
+                        });
+                    }
+                });
             });
 
             // Deduplicate per student

@@ -40,7 +40,7 @@ async function buildRosterSet(classId, subjectId) {
 }
 
 // Upsert a session (find-or-create today's attendance for this teacher+class+subject).
-async function getOrCreateSession(teacherId, { className, section, subject, classId, subjectId, academicSession, sessionLabel, source, academicYear }) {
+async function getOrCreateSession(teacherId, { className, section, subsection, subject, classId, subjectId, academicSession, sessionLabel, source, academicYear }) {
     let finalSubject = subject || '';
     if (!finalSubject && teacherId) {
         try {
@@ -59,22 +59,46 @@ async function getOrCreateSession(teacherId, { className, section, subject, clas
         finalAcademicSession = `Year ${academicYear}`;
     }
 
+    // Determine targetSectionTag and search conditions
+    let targetSectionTag = section || '';
+    let sectionWhere = undefined;
+
+    if (classId && subjectId) {
+        // Class/Subject mode
+        sectionWhere = section || '';
+    } else {
+        const isSub = subsection && subsection.toUpperCase() !== 'ALL';
+        const cleanSec = (section || '').toUpperCase().trim();
+        const cleanSub = (subsection || '').toUpperCase().trim();
+
+        if (isSub) {
+            targetSectionTag = cleanSub;
+            // Search for existing subsection session (e.g. 'C3' or 'C-C3')
+            sectionWhere = { in: [cleanSub, `${cleanSec}-${cleanSub}`].filter(Boolean) };
+        } else {
+            targetSectionTag = cleanSec ? `${cleanSec}-ALL` : 'ALL';
+            // Search for existing complete section session (e.g. 'C-ALL', 'ALL', or 'C')
+            sectionWhere = { in: [targetSectionTag, 'ALL', cleanSec].filter(Boolean) };
+        }
+    }
+
     const existing = await prisma.attendance.findFirst({
         where: {
             teacherId,
             date: dayRange(),
             ...(classId   ? { classId }               : { className: className || '' }),
-            ...(subjectId ? { subjectId }              : { section:   section   || '' })
+            ...(subjectId ? { subjectId }              : (sectionWhere ? { section: sectionWhere } : {}))
         }
     });
+
     if (existing) {
-        if ((!existing.subjectName && finalSubject) || (!existing.className && className) || (!existing.section && section) || (!existing.sessionLabel && finalSessionLabel)) {
+        if ((!existing.subjectName && finalSubject) || (!existing.className && className) || (!existing.section && targetSectionTag) || (!existing.sessionLabel && finalSessionLabel)) {
             return prisma.attendance.update({
                 where: { id: existing.id },
                 data: {
                     ...(finalSubject && !existing.subjectName ? { subjectName: finalSubject } : {}),
                     ...(className && !existing.className ? { className } : {}),
-                    ...(section && !existing.section ? { section } : {}),
+                    ...(targetSectionTag && !existing.section ? { section: targetSectionTag } : {}),
                     ...(finalSessionLabel && !existing.sessionLabel ? { sessionLabel: finalSessionLabel } : {}),
                     ...(finalAcademicSession && !existing.academicSession ? { academicSession: finalAcademicSession } : {})
                 }
@@ -88,7 +112,7 @@ async function getOrCreateSession(teacherId, { className, section, subject, clas
             teacherId,
             date:           new Date(),
             className:      className      || '',
-            section:        section        || '',
+            section:        targetSectionTag || section || '',
             subjectName:    finalSubject,
             classId:        classId        || null,
             subjectId:      subjectId      || null,
@@ -116,16 +140,18 @@ async function ensureBatchStudentsInSession(sessionId, batchScope = {}) {
         if (batchStudents.length === 0) {
             const yr = academicYear ? parseInt(academicYear, 10) : undefined;
             const br = branch ? branch.toUpperCase().trim() : undefined;
-            const sec = (subsection || section || '').toUpperCase().trim();
+            const targetSec = section ? section.toUpperCase().trim() : undefined;
+            const targetSub = subsection ? subsection.toUpperCase().trim() : undefined;
 
             const all = await prisma.student.findMany({ where: { status: 'active' } });
             batchStudents = all.filter(s => {
                 if (yr && s.academicYear !== yr) return false;
                 if (br && (s.branch || '').toUpperCase() !== br) return false;
-                if (sec && sec !== 'ALL') {
-                    const sSec = (s.section || '').toUpperCase();
-                    const sSub = (s.subsection || '').toUpperCase();
-                    if (sSub !== sec && sSec !== sec) return false;
+                if (targetSec && targetSec !== 'ALL') {
+                    if ((s.section || '').toUpperCase() !== targetSec) return false;
+                }
+                if (targetSub && targetSub !== 'ALL') {
+                    if ((s.subsection || '').toUpperCase() !== targetSub) return false;
                 }
                 return true;
             });
@@ -168,7 +194,8 @@ exports.takeAttendance = async (req, res) => {
         const teacherId = req.teacherId;
         const session   = await getOrCreateSession(teacherId, { 
             className: className || branch || '', 
-            section: subsection || section || '', 
+            section: section || '', 
+            subsection: subsection || '',
             subject, 
             classId, 
             subjectId, 
@@ -181,8 +208,8 @@ exports.takeAttendance = async (req, res) => {
         await ensureBatchStudentsInSession(session.id, {
             academicYear,
             branch: branch || className,
-            section,
-            subsection,
+            section: section || '',
+            subsection: subsection || '',
             classId,
             subjectId
         });
@@ -222,13 +249,24 @@ exports.takeAttendance = async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 exports.getTodayAttendance = async (req, res) => {
     try {
-        const { class: className, section, classId, subjectId } = req.query;
+        const { class: className, section, branch, subsection, classId, subjectId } = req.query;
+        const targetClass = className || branch;
+        let sectionFilter = undefined;
+        if (section || subsection) {
+            const isSub = subsection && subsection.toUpperCase() !== 'ALL';
+            const cleanSec = (section || '').toUpperCase().trim();
+            const cleanSub = (subsection || '').toUpperCase().trim();
+            sectionFilter = isSub 
+                ? { in: [cleanSub, `${cleanSec}-${cleanSub}`].filter(Boolean) } 
+                : { in: [`${cleanSec}-ALL`, 'ALL', cleanSec].filter(Boolean) };
+        }
+
         const sessions = await prisma.attendance.findMany({
             where: {
                 teacherId: req.teacherId,
                 date: dayRange(),
-                ...(classId   ? { classId }               : (className ? { className } : {})),
-                ...(subjectId ? { subjectId }              : (section   ? { section }   : {}))
+                ...(classId   ? { classId }               : (targetClass ? { className: targetClass } : {})),
+                ...(subjectId ? { subjectId }              : (sectionFilter ? { section: sectionFilter } : {}))
             },
             include: { records: { include: { student: { select: { id: true, name: true, studentId: true, profilePhoto: true, academicYear: true, branch: true, section: true, subsection: true } } } } }
         });
@@ -288,7 +326,16 @@ exports.resetTodayAttendance = async (req, res) => {
     try {
         const { classId, subjectId, class: className, section, branch, subsection } = req.query;
         const targetClass = className || branch;
-        const targetSection = subsection || section;
+        let targetSection = undefined;
+        if (section || subsection) {
+            const isSub = subsection && subsection.toUpperCase() !== 'ALL';
+            const cleanSec = (section || '').toUpperCase().trim();
+            const cleanSub = (subsection || '').toUpperCase().trim();
+            targetSection = isSub 
+                ? { in: [cleanSub, `${cleanSec}-${cleanSub}`].filter(Boolean) } 
+                : { in: [`${cleanSec}-ALL`, 'ALL', cleanSec].filter(Boolean) };
+        }
+
         const sessions = await prisma.attendance.findMany({
             where: {
                 teacherId: req.teacherId,
@@ -314,7 +361,16 @@ exports.downloadTodayAttendanceCSV = async (req, res) => {
     try {
         const { classId, subjectId, class: className, section, branch, subsection, academicYear } = req.query;
         const targetClass = className || branch;
-        const targetSection = subsection || section;
+        let targetSection = undefined;
+        if (section || subsection) {
+            const isSub = subsection && subsection.toUpperCase() !== 'ALL';
+            const cleanSec = (section || '').toUpperCase().trim();
+            const cleanSub = (subsection || '').toUpperCase().trim();
+            targetSection = isSub 
+                ? { in: [cleanSub, `${cleanSec}-${cleanSub}`].filter(Boolean) } 
+                : { in: [`${cleanSec}-ALL`, 'ALL', cleanSec].filter(Boolean) };
+        }
+
         const sessions = await prisma.attendance.findMany({
             where: {
                 teacherId: req.teacherId,
@@ -451,7 +507,8 @@ exports.takeFaceAttendance = async (req, res) => {
 
         const session = await getOrCreateSession(req.teacherId, { 
             className: className || branch || '', 
-            section: subsection || section || '', 
+            section: section || '', 
+            subsection: subsection || '',
             subject, 
             classId, 
             subjectId, 
@@ -464,8 +521,8 @@ exports.takeFaceAttendance = async (req, res) => {
         await ensureBatchStudentsInSession(session.id, {
             academicYear,
             branch: branch || className,
-            section: subsection || section,
-            subsection,
+            section: section || '',
+            subsection: subsection || '',
             classId,
             subjectId
         });
@@ -473,20 +530,31 @@ exports.takeFaceAttendance = async (req, res) => {
         // Check if already marked
         const existing = await prisma.attendanceRecord.findUnique({ where: { attendanceId_studentId: { attendanceId: session.id, studentId: student.id } } });
         if (existing) {
-            if (existing.status !== 'present') {
-                await prisma.attendanceRecord.update({
-                    where: { id: existing.id },
-                    data: { status: 'present', markedAt: new Date() }
+            if (existing.status === 'present') {
+                return res.status(200).json({ 
+                    success: true, 
+                    message: `${student.name} already marked present`, 
+                    alreadyMarked: true, 
+                    student: { name: student.name, studentId: student.studentId, confidence: recognized.confidence } 
                 });
             }
-            return res.status(200).json({ success: true, message: `${student.name} already marked present`, alreadyMarked: true, student: { name: student.name, studentId: student.studentId, confidence: recognized.confidence } });
+            await prisma.attendanceRecord.update({
+                where: { id: existing.id },
+                data: { status: 'present', markedAt: new Date() }
+            });
+            return res.status(200).json({ 
+                success: true, 
+                message: `Attendance marked for ${student.name}`, 
+                alreadyMarked: false, 
+                student: { name: student.name, studentId: student.studentId, confidence: recognized.confidence } 
+            });
         }
 
         await prisma.attendanceRecord.create({
             data: { attendanceId: session.id, studentId: student.id, studentName: student.name, studentRollNo: student.studentId, status: 'present', markedAt: new Date() }
         });
 
-        res.status(201).json({ success: true, message: `Attendance marked for ${student.name}`, student: { name: student.name, studentId: student.studentId, confidence: recognized.confidence } });
+        res.status(201).json({ success: true, message: `Attendance marked for ${student.name}`, alreadyMarked: false, student: { name: student.name, studentId: student.studentId, confidence: recognized.confidence } });
     } catch (e) {
         res.status(500).json({ success: false, message: 'Error marking face attendance', error: e.message });
     }
@@ -521,7 +589,8 @@ exports.takeMultipleFaceAttendance = async (req, res) => {
 
         const session = await getOrCreateSession(req.teacherId, { 
             className: className || branch || '', 
-            section: subsection || section || '', 
+            section: section || '', 
+            subsection: subsection || '',
             subject, 
             classId, 
             subjectId, 
@@ -534,14 +603,18 @@ exports.takeMultipleFaceAttendance = async (req, res) => {
         await ensureBatchStudentsInSession(session.id, {
             academicYear,
             branch: branch || className,
-            section: subsection || section,
-            subsection,
+            section: section || '',
+            subsection: subsection || '',
             classId,
             subjectId
         });
 
+        const detectedStudents = faceResult.recognizedStudents || faceResult.students || [];
         const results = [];
-        for (const recognized of faceResult.students || []) {
+        const markedStudents = [];
+        const alreadyMarkedStudents = [];
+
+        for (const recognized of detectedStudents) {
             if (rosterSet && !rosterSet.has(recognized.studentId)) {
                 results.push({ studentId: recognized.studentId, status: 'not_in_roster', confidence: recognized.confidence });
                 continue;
@@ -562,23 +635,52 @@ exports.takeMultipleFaceAttendance = async (req, res) => {
 
             const existing = await prisma.attendanceRecord.findUnique({ where: { attendanceId_studentId: { attendanceId: session.id, studentId: student.id } } });
             if (existing) { 
-                if (existing.status !== 'present') {
-                    await prisma.attendanceRecord.update({
-                        where: { id: existing.id },
-                        data: { status: 'present', markedAt: new Date() }
-                    });
+                if (existing.status === 'present') {
+                    alreadyMarkedStudents.push({ studentId: student.studentId, name: student.name, confidence: recognized.confidence });
+                    results.push({ studentId: student.studentId, name: student.name, status: 'already_marked', confidence: recognized.confidence }); 
+                    continue; 
                 }
-                results.push({ studentId: student.studentId, name: student.name, status: 'already_marked', confidence: recognized.confidence }); 
-                continue; 
+
+                // Student was seeded as absent -> mark present now!
+                await prisma.attendanceRecord.update({
+                    where: { id: existing.id },
+                    data: { status: 'present', markedAt: new Date() }
+                });
+                markedStudents.push({ studentId: student.studentId, name: student.name, confidence: recognized.confidence });
+                results.push({ studentId: student.studentId, name: student.name, status: 'marked', confidence: recognized.confidence });
+                continue;
             }
 
             await prisma.attendanceRecord.create({
                 data: { attendanceId: session.id, studentId: student.id, studentName: student.name, studentRollNo: student.studentId, status: 'present', markedAt: new Date() }
             });
+            markedStudents.push({ studentId: student.studentId, name: student.name, confidence: recognized.confidence });
             results.push({ studentId: student.studentId, name: student.name, status: 'marked', confidence: recognized.confidence });
         }
 
-        res.status(201).json({ success: true, results });
+        const totalFaces = faceResult.totalFaces !== undefined 
+            ? faceResult.totalFaces 
+            : (detectedStudents.length + (faceResult.unrecognizedCount || 0));
+        const unrecognizedCount = faceResult.unrecognizedCount || 0;
+
+        let message = `Scan complete: detected ${totalFaces} face(s)`;
+        if (markedStudents.length > 0) {
+            message = `Attendance marked for ${markedStudents.length} student(s)`;
+        } else if (alreadyMarkedStudents.length > 0) {
+            message = `All ${alreadyMarkedStudents.length} recognized student(s) already marked present`;
+        } else if (unrecognizedCount > 0) {
+            message = `Detected ${totalFaces} face(s), but faces could not be recognized`;
+        }
+
+        res.status(201).json({ 
+            success: true, 
+            message,
+            totalFaces,
+            markedStudents,
+            alreadyMarkedStudents,
+            unrecognizedCount,
+            results 
+        });
     } catch (e) {
         res.status(500).json({ success: false, message: 'Error marking face attendance', error: e.message });
     }
@@ -602,19 +704,21 @@ exports.bulkPhotoAttendance = async (req, res) => {
         const rosterSet = await buildRosterSet(classId, subjectId);
         const session   = await getOrCreateSession(req.teacherId, { 
             className: className || branch || '', 
-            section: subsection || section || '', 
+            section: section || '', 
+            subsection: subsection || '',
             subject, 
             classId, 
             subjectId, 
             academicSession, 
+            academicYear,
             source: 'face' 
         });
 
         await ensureBatchStudentsInSession(session.id, {
             academicYear,
             branch: branch || className,
-            section: subsection || section,
-            subsection,
+            section: section || '',
+            subsection: subsection || '',
             classId,
             subjectId
         });
@@ -634,7 +738,8 @@ exports.bulkPhotoAttendance = async (req, res) => {
             const faceResult = await faceRecognitionService.recognizeMultipleFaces(img, batchScope);
             if (!faceResult.success) { results.push({ error: faceResult.message }); continue; }
 
-            for (const recognized of faceResult.students || []) {
+            const recognizedList = faceResult.recognizedStudents || faceResult.students || [];
+            for (const recognized of recognizedList) {
                 if (markedIds.has(recognized.studentId)) continue;
                 if (rosterSet && !rosterSet.has(recognized.studentId)) continue;
 

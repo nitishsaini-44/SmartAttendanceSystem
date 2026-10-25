@@ -8,7 +8,20 @@ async function resolveStudentAttendanceGroups(student, { fromDate, toDate } = {}
     // 1. Fetch formal enrollments if any
     const enrollments = await prisma.enrollment.findMany({
         where: { studentId: student.id, status: 'active' },
-        include: { class: true, subject: true }
+        include: { 
+            class: true, 
+            subject: {
+                include: {
+                    assignments: {
+                        where: { status: 'active' },
+                        include: {
+                            teacherProfile: { select: { id: true, name: true } },
+                            teacherUser: { select: { id: true, name: true } }
+                        }
+                    }
+                }
+            } 
+        }
     });
 
     // Date filtering if provided
@@ -39,7 +52,7 @@ async function resolveStudentAttendanceGroups(student, { fromDate, toDate } = {}
     if (student.branch) {
         classConditions.push({
             className: { equals: student.branch, mode: 'insensitive' },
-            section: { in: [student.section, student.subsection, 'ALL'].filter(Boolean) }
+            section: { in: [student.section, student.subsection, 'ALL', student.section ? `${student.section}-ALL` : null, (student.section && student.subsection) ? `${student.section}-${student.subsection}` : null].filter(Boolean) }
         });
     }
     if (student.class) {
@@ -91,6 +104,7 @@ async function resolveStudentAttendanceGroups(student, { fromDate, toDate } = {}
     for (const [sessionId, { session, record }] of sessionMap.entries()) {
         const subjectName = session.subject?.name || session.subjectName || session.teacher?.subject || 'General Studies';
         const subjectKey = (session.subjectId || subjectName).toLowerCase();
+        const teacherName = session.teacher?.name || '';
 
         if (!subjectGroups.has(subjectKey)) {
             subjectGroups.set(subjectKey, {
@@ -100,10 +114,13 @@ async function resolveStudentAttendanceGroups(student, { fromDate, toDate } = {}
                 className: session.className ? (session.section ? `${session.className} - ${session.section}` : session.className) : (student.branch ? `${student.branch} - ${student.subsection || student.section}` : 'Class'),
                 academicSession: session.academicSession || session.sessionLabel || (student.academicYear ? `Year ${student.academicYear}` : '2026-27'),
                 threshold: session.subject?.attendanceThreshold ?? 75,
+                teacherName: teacherName,
                 records: [],
                 attended: 0,
                 conducted: 0
             });
+        } else if (teacherName && !subjectGroups.get(subjectKey).teacherName) {
+            subjectGroups.get(subjectKey).teacherName = teacherName;
         }
 
         const group = subjectGroups.get(subjectKey);
@@ -122,6 +139,7 @@ async function resolveStudentAttendanceGroups(student, { fromDate, toDate } = {}
     // Merge in formal enrollments for subjects with 0 sessions
     for (const enr of enrollments) {
         const subjectKey = (enr.subjectId || enr.subject?.name || '').toLowerCase();
+        const enrTeacher = enr.subject?.assignments?.[0]?.teacherProfile?.name || enr.subject?.assignments?.[0]?.teacherUser?.name || '';
         if (!subjectGroups.has(subjectKey)) {
             subjectGroups.set(subjectKey, {
                 subjectId: enr.subjectId,
@@ -130,11 +148,38 @@ async function resolveStudentAttendanceGroups(student, { fromDate, toDate } = {}
                 className: enr.class?.name || student.class || 'Class',
                 academicSession: enr.academicSession || '2026-27',
                 threshold: enr.subject?.attendanceThreshold ?? 75,
+                teacherName: enrTeacher,
                 records: [],
                 attended: 0,
                 conducted: 0
             });
+        } else if (enrTeacher && !subjectGroups.get(subjectKey).teacherName) {
+            subjectGroups.get(subjectKey).teacherName = enrTeacher;
         }
+    }
+
+    // Fallback: resolve teacherName from Teacher table if any group still lacks it
+    const missingTeacherGroups = Array.from(subjectGroups.values()).filter(g => !g.teacherName);
+    if (missingTeacherGroups.length > 0) {
+        try {
+            const allTeachers = await prisma.teacher.findMany({
+                where: { status: 'active' },
+                select: { id: true, name: true, subject: true, academicAccess: true }
+            });
+            for (const g of missingTeacherGroups) {
+                const match = allTeachers.find(t => 
+                    (t.subject && (t.subject.toLowerCase() === g.subjectName.toLowerCase() || g.subjectName.toLowerCase().includes(t.subject.toLowerCase()))) ||
+                    (t.academicAccess && t.academicAccess.some(a => 
+                        a.academicYear === student.academicYear &&
+                        (!a.branch || a.branch.toUpperCase() === (student.branch || '').toUpperCase()) &&
+                        (!a.section || a.section === 'ALL' || a.section.toUpperCase() === (student.section || '').toUpperCase())
+                    ))
+                );
+                if (match) {
+                    g.teacherName = match.name;
+                }
+            }
+        } catch {}
     }
 
     return subjectGroups;
@@ -214,6 +259,7 @@ exports.getAttendanceSummary = async (req, res) => {
                 className:       group.className,
                 classCode:       group.subjectCode,
                 academicSession: group.academicSession,
+                teacherName:     group.teacherName || '',
                 conducted,
                 attended,
                 missed,
@@ -263,8 +309,10 @@ exports.getAttendance = async (req, res) => {
                         name: group.className,
                         code: group.subjectCode
                     },
-                    academicSession: group.academicSession
+                    academicSession: group.academicSession,
+                    teacherName: group.teacherName || ''
                 },
+                teacherName: group.teacherName || '',
                 totalSessions: total,
                 attended,
                 missed,
@@ -303,6 +351,7 @@ exports.getSubjectAttendance = async (req, res) => {
             success: true,
             subject: { id: targetGroup.subjectId, name: targetGroup.subjectName, code: targetGroup.subjectCode },
             class: { name: targetGroup.className },
+            teacherName: targetGroup.teacherName || '',
             totalSessions: total,
             attended,
             missed,
