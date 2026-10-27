@@ -18,6 +18,8 @@ dist/
 build/
 **/dist/
 **/build/
+*.timestamp-*.mjs
+**/*.timestamp-*.mjs
 
 # ── Uploads (local profile photos — not committed to repo) ────────────────────
 uploads/

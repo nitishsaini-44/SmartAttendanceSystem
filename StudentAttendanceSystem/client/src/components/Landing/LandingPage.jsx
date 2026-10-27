@@ -250,10 +250,39 @@ const LandingPage = () => {
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
 
+    useEffect(() => {
+        if (mobileMenuOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [mobileMenuOpen]);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') setMobileMenuOpen(false);
+        };
+        const handleResize = () => {
+            if (window.innerWidth >= 768) setMobileMenuOpen(false);
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('resize', handleResize);
+        };
+    }, []);
+
     const scrollTo = (id) => {
-        const el = document.getElementById(id);
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
         setMobileMenuOpen(false);
+        document.body.style.overflow = '';
+        requestAnimationFrame(() => {
+            const el = document.getElementById(id);
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+        });
     };
 
     if (loading) {
@@ -266,11 +295,11 @@ const LandingPage = () => {
     if (isAuthenticated) return null;
 
     const navLinks = [
-        { label: 'Overview',     id: 'overview'   },
-        { label: 'Features',     id: 'features'   },
-        { label: 'How It Works', id: 'howitworks' },
-        { label: 'Technology',   id: 'technology' },
-        { label: 'Security',     id: 'security'   },
+        { label: 'Overview',     id: 'overview',   icon: Eye },
+        { label: 'Features',     id: 'features',   icon: Sparkles },
+        { label: 'How It Works', id: 'howitworks', icon: Cpu },
+        { label: 'Technology',   id: 'technology', icon: Layers },
+        { label: 'Security',     id: 'security',   icon: ShieldCheck },
     ];
 
     return (
@@ -279,8 +308,10 @@ const LandingPage = () => {
             {/* ═══ NAVBAR ═══ */}
             <nav
                 aria-label="Main navigation"
-                className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
-                    scrolled ? 'bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-800/80 shadow-xl shadow-black/20' : 'bg-transparent'
+                className={`fixed top-0 inset-x-0 z-40 transition-all duration-300 ${
+                    scrolled
+                        ? 'bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-800/80 shadow-xl shadow-black/20'
+                        : 'bg-zinc-950/40 backdrop-blur-md md:bg-transparent'
                 }`}
             >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -307,25 +338,94 @@ const LandingPage = () => {
                             </Link>
                             <button
                                 className="md:hidden p-2 rounded-xl border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 transition-all"
-                                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                                aria-label="Toggle menu"
+                                onClick={() => setMobileMenuOpen(prev => !prev)}
+                                aria-label="Toggle navigation menu"
                                 aria-expanded={mobileMenuOpen}
                             >
-                                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                                <Menu className="w-5 h-5" />
                             </button>
                         </div>
                     </div>
-                    {mobileMenuOpen && (
-                        <div className="md:hidden pb-4 pt-2 border-t border-zinc-800/60 space-y-1">
-                            {navLinks.map(({ label, id }) => (
-                                <button key={id} onClick={() => scrollTo(id)} className="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800/60 rounded-xl transition-all">
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                    )}
                 </div>
             </nav>
+
+            {/* ═══ MOBILE SIDEBAR OVERLAY & DRAWER ═══ */}
+            {/* Mobile Backdrop */}
+            <div
+                className={`fixed inset-0 z-50 bg-black/70 backdrop-blur-sm transition-opacity duration-300 md:hidden ${
+                    mobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+                aria-hidden="true"
+            />
+
+            {/* Mobile Sidebar */}
+            <aside
+                className={`fixed top-0 right-0 bottom-0 z-50 w-80 max-w-[85vw] bg-zinc-950 border-l border-zinc-800/90 shadow-2xl flex flex-col justify-between p-6 transform transition-transform duration-300 ease-in-out md:hidden ${
+                    mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+                }`}
+                aria-label="Mobile Navigation Sidebar"
+            >
+                {/* Header */}
+                <div className="flex items-center justify-between pb-5 border-b border-zinc-800/80">
+                    <button
+                        onClick={() => scrollTo('hero')}
+                        className="flex items-center gap-3 text-left group"
+                        aria-label="Smart Attendance home"
+                    >
+                        <div className="p-2 rounded-xl bg-white/5 border border-zinc-800 group-hover:border-zinc-600 transition-colors">
+                            <GraduationCap className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                            <span className="text-xs text-zinc-400 block leading-none">Smart</span>
+                            <span className="text-sm font-semibold text-white leading-none">Attendance System</span>
+                        </div>
+                    </button>
+                    <button
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="p-2 rounded-xl border border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:text-white hover:border-zinc-700 transition-all"
+                        aria-label="Close sidebar"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                {/* Navigation items */}
+                <div className="py-6 flex-1 overflow-y-auto space-y-2">
+                    <p className="px-3 text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">Navigation</p>
+                    {navLinks.map(({ label, id, icon: Icon }) => (
+                        <button
+                            key={id}
+                            onClick={() => scrollTo(id)}
+                            className="w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-zinc-300 hover:text-white hover:bg-zinc-900 border border-transparent hover:border-zinc-800/80 transition-all text-sm font-medium group text-left"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 group-hover:text-blue-400 group-hover:border-blue-500/30 transition-colors">
+                                    <Icon className="w-4 h-4" />
+                                </div>
+                                <span className="font-medium text-zinc-200 group-hover:text-white">{label}</span>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-300 group-hover:translate-x-0.5 transition-all" />
+                        </button>
+                    ))}
+                </div>
+
+                {/* Footer with Login CTA */}
+                <div className="pt-5 border-t border-zinc-800/80 space-y-3">
+                    <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-3">
+                        <p className="text-xs text-zinc-400">Institutional Access</p>
+                        <p className="text-xs font-medium text-zinc-200 mt-0.5">Faculty, Student & Admin Portal</p>
+                    </div>
+                    <Link
+                        to="/login"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="w-full py-3 px-4 rounded-xl bg-white text-black text-sm font-semibold hover:bg-zinc-100 active:scale-95 transition-all duration-200 shadow-lg shadow-white/10 flex items-center justify-center gap-2"
+                    >
+                        <span>Login to System</span>
+                        <ArrowRight className="w-4 h-4" />
+                    </Link>
+                </div>
+            </aside>
 
             {/* ═══ HERO ═══ */}
             <div id="hero" className="relative min-h-screen flex flex-col justify-center pt-16 overflow-hidden">

@@ -256,7 +256,7 @@ const Login = () => {
                                             onChange={handleChange}
                                             required
                                             autoComplete="off"
-                                            placeholder="admin@institution.edu"
+                                            placeholder="User@institution.edu"
                                             className={`w-full rounded-2xl border bg-zinc-950 px-4 py-2.5 sm:py-3 pl-10 text-sm text-white placeholder-zinc-500 focus:outline-none transition-all ${
                                                 errorMessage
                                                     ? 'border-red-500/70 focus:border-red-400 focus:ring-1 focus:ring-red-400/30'
